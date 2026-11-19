@@ -40,6 +40,9 @@ Une tâche / PR est considérée comme **terminée** uniquement si tous ces crit
 ### Checks CI requis
 Avant tout merge, les checks `secret-scan`, `lint`, `test` et `build` doivent être verts. La PR doit utiliser le template `.github/pull_request_template.md`. Toute dérogation (review absente, merge hors protection, urgence) est documentée dans la PR avec qui, quand et pourquoi, puis reportée dans `docs/incidents.md`.
 
+### Protection de `main`
+La branche `main` doit être protégée : PR obligatoire, 1 approbation interne, review des code owners, checks obligatoires, conversations résolues, pas de force-push ni de suppression. Les commandes admin sont dans `docs/github-settings.md`.
+
 ---
 
 ## 5. Versionnage : savoir en 10 secondes ce qui tourne en production `[R1, R5]`
