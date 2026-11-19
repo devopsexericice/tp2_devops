@@ -65,8 +65,14 @@ def test_create_order_insufficient_stock():
         json={"product_id": product_id, "quantity": 8},
     )
 
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Insufficient stock"
+    assert response.status_code == 409
+    assert response.json()["detail"] == {
+        "error": "insufficient_stock",
+        "message": "Stock insuffisant : 8 demandés, 5 disponibles",
+        "product_id": product_id,
+        "requested": 8,
+        "available": 5,
+    }
 
     db = SessionLocal()
     try:
@@ -117,8 +123,14 @@ def test_create_order_zero_stock():
         json={"product_id": product_id, "quantity": 1},
     )
 
-    assert response.status_code == 400
-    assert response.json()["detail"] == "Insufficient stock"
+    assert response.status_code == 409
+    assert response.json()["detail"] == {
+        "error": "insufficient_stock",
+        "message": "Stock insuffisant : 1 demandés, 0 disponibles",
+        "product_id": product_id,
+        "requested": 1,
+        "available": 0,
+    }
 
     db = SessionLocal()
     try:
