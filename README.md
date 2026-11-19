@@ -15,6 +15,7 @@ docker compose exec api python scripts/seed.py
 
 - Health : `GET http://localhost:8000/health`
 - Produits : `GET http://localhost:8000/products`
+- Stock : `PUT http://localhost:8000/products/{id}/stock` avec `{"stock":10}`
 - Commande : `POST http://localhost:8000/orders` avec `{"product_id":1,"quantity":1}`
 
 ## Tests
