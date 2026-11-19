@@ -33,7 +33,7 @@ Une tâche / PR est considérée comme **terminée** uniquement si tous ces crit
 1. Le code répond au besoin de l'issue associée.
 2. Les tests automatiques (unitaires et API) sont écrits et passent au vert `[R1, R4]`.
 3. Aucun secret, mot de passe ou fichier `.env` n'est présent dans le code `[R2]`.
-4. Si la base de données est modifiée, le script de mise à jour est inclus et rétrocompatible `[R1]`.
+4. Si la base de données est modifiée, une migration Alembic rétrocompatible est incluse et testée `[R1]`.
 5. La documentation (`README.md` ou docs) est mise à jour `[R4, R5]`.
 6. La PR a été relue, approuvée par **1 développeur interne** et fusionnée dans `main` `[R1, R3, R4]`.
 
@@ -51,6 +51,10 @@ La branche `main` doit être protégée : PR obligatoire, 1 approbation interne,
 * **Vérification en 10 secondes :** L'API dispose d'une route publique `GET /health` qui renvoie directement la version active en production :
   ```json
   { "status": "ok", "version": "v1.0.0", "commit": "a1b2c3d" }
+  ```
+* **Publication automatique :** `cd.yml` publie `sha-<sha>` à chaque merge sur `main` et `vX.Y.Z` sur tag. Le staging est vérifié avant la production.
+* **Production :** le job `production` exige l'environnement GitHub `production` (approbation interne) et les secrets `PROD_*` ; voir `docs/deploy.md`.
+* **Rollback :** le workflow manuel `Rollback` redéploie une version `vX.Y.Z` depuis GHCR, sans rebuild.
 
 ---
 
@@ -59,6 +63,7 @@ La branche `main` doit être protégée : PR obligatoire, 1 approbation interne,
 ### Où vivent les secrets ?
 * **En local** : dans un fichier `.env` ignoré par Git (`.gitignore`), créé à partir du modèle `.env.example`.
 * **En CI/CD et Production** : uniquement dans **GitHub Secrets** et **GitHub Environments** (`staging`, `production`).
+* **Secrets de déploiement :** `PROD_HOST`, `PROD_USER`, `PROD_SSH_KEY`, `PROD_DIR`, `PROD_KNOWN_HOSTS` (optionnel). `GITHUB_TOKEN` est fourni par Actions pour GHCR.
 
 ### Qui y a accès ?
 * Uniquement les **3 développeurs internes** (rôle `Admin` / `Maintain`).
