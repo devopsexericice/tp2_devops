@@ -4,10 +4,8 @@ from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.database import Base, engine, get_db
+from app.database import get_db
 from app.models import Order, Product
-
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Restaurant API")
 

@@ -2,7 +2,7 @@
 
 Ce document décrit le fonctionnement de notre chaîne de livraison automatisée (GitHub Actions), de la création d'une Pull Request jusqu'à la mise en production. Chaque étape répond aux risques identifiés dans `docs/risques.md` (`[R1]` à `[R5]`) et à notre carte contexte.
 
-> **Statut d'implémentation au 19/11/2026** : CI de PR et CD implémentés. `ci.yml` couvre les secrets, le lint, les tests PostgreSQL et le build. `cd.yml` publie l'image GHCR, exécute le staging et le smoke test, puis déploie la production sur tag avec approbation. `rollback.yml` permet le retour à une version antérieure sans rebuild. La production nécessite les secrets `PROD_*` et l'environnement `production` configurés par un admin ; voir `docs/deploy.md`. Les migrations Alembic arrivent dans une PR séparée.
+> **Statut d'implémentation au 19/11/2026** : CI de PR et CD implémentés. `ci.yml` couvre les secrets, le lint, les tests PostgreSQL et le build. `cd.yml` publie l'image GHCR, exécute le staging et le smoke test, puis déploie la production sur tag avec approbation. `rollback.yml` permet le retour à une version antérieure sans rebuild. La production nécessite les secrets `PROD_*` et l'environnement `production` configurés par un admin ; voir `docs/deploy.md`. Les migrations Alembic (`alembic.ini`, `migrations/`) sont appliquées par `scripts/deploy.sh` avant le redémarrage de l'API.
 
 ---
 

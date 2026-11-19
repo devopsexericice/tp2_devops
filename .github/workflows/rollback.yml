@@ -102,4 +102,4 @@ jobs:
           set -euo pipefail
           # shellcheck disable=SC2029
           ssh "$PROD_USER@$PROD_HOST" \
-            "cd '$PROD_DIR' && chmod +x deploy.sh && API_IMAGE='$IMAGE' APP_VERSION='$APP_VERSION' ./deploy.sh"
+            "cd '$PROD_DIR' && chmod +x deploy.sh && API_IMAGE='$IMAGE' APP_VERSION='$APP_VERSION' RUN_MIGRATIONS='false' ./deploy.sh"

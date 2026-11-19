@@ -33,7 +33,7 @@ En local, les tests utilisent SQLite par défaut. En CI, ils tournent contre Pos
 - CI de PR : `secret-scan` (gitleaks), `lint` (Ruff), `test` (PostgreSQL), `build` Docker.
 - CD : publication GHCR (`sha-...`, `vX.Y.Z`), staging éphémère avec smoke test `/health`, release sur tag et rollback manuel sans rebuild.
 - Production : environnement GitHub `production` avec approbation interne et secrets `PROD_*`. Procédure complète dans `docs/deploy.md`.
-- Migrations : PR Alembic séparée.
+- Migrations : Alembic (`alembic upgrade head`), appliquées automatiquement par `scripts/deploy.sh`.
 
 ## Secrets
 
