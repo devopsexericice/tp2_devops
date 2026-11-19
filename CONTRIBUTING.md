@@ -37,6 +37,9 @@ Une tâche / PR est considérée comme **terminée** uniquement si tous ces crit
 5. La documentation (`README.md` ou docs) est mise à jour `[R4, R5]`.
 6. La PR a été relue, approuvée par **1 développeur interne** et fusionnée dans `main` `[R1, R3, R4]`.
 
+### Checks CI requis
+Avant tout merge, les checks `secret-scan`, `lint`, `test` et `build` doivent être verts. La PR doit utiliser le template `.github/pull_request_template.md`. Toute dérogation (review absente, merge hors protection, urgence) est documentée dans la PR avec qui, quand et pourquoi, puis reportée dans `docs/incidents.md`.
+
 ---
 
 ## 5. Versionnage : savoir en 10 secondes ce qui tourne en production `[R1, R5]`

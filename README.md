@@ -1,5 +1,7 @@
 # TP2 — Restaurant API
 
+![CI](https://github.com/devopsexericice/tp2_devops/actions/workflows/ci.yml/badge.svg)
+
 API minimale Python (FastAPI) + PostgreSQL pour le TP DevOps.
 
 ## Lancer en local
@@ -19,10 +21,17 @@ docker compose exec api python scripts/seed.py
 ```bash
 python -m venv .venv
 # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 pytest -q
 ```
 
+En local, les tests utilisent SQLite par défaut. En CI, ils tournent contre PostgreSQL.
+
+## CI/CD
+
+- CI de PR : `secret-scan` (gitleaks), `lint` (Ruff), `test` (PostgreSQL), `build` Docker.
+- CD (publication GHCR, staging, release, rollback) : à venir dans les PR suivantes. La cible est décrite dans `docs/pipeline.md`.
+
 ## Secrets
 
-Aucun secret réel dans le dépôt. Valeurs locales factices dans `.env.example` / `docker-compose.yml`. Les secrets CI/CD passent uniquement par GitHub Secrets.
+Aucun secret réel dans le dépôt. Valeurs locales factices dans `.env.example` / `docker-compose.yml`, allowlistées dans `.gitleaks.toml`. Les secrets CI/CD passent uniquement par GitHub Secrets.
