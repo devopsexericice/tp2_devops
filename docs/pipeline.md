@@ -2,6 +2,8 @@
 
 Ce document décrit le fonctionnement de notre chaîne de livraison automatisée (GitHub Actions), de la création d'une Pull Request jusqu'à la mise en production. Chaque étape répond aux risques identifiés dans `docs/risques.md` (`[R1]` à `[R5]`) et à notre carte contexte.
 
+> **Statut d'implémentation au 19/11/2026** : la CI de PR est implémentée (`secret-scan`, `lint`, `test` contre PostgreSQL, `build` Docker). Les étapes de CD (publication GHCR, staging, release, rollback) restent à implémenter dans les PR suivantes. Le schéma ci-dessous décrit la cible.
+
 ---
 
 ## 1. Schéma du pipeline (de la PR jusqu'à la Production)

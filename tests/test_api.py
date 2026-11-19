@@ -1,6 +1,6 @@
 import os
 
-os.environ["DATABASE_URL"] = "sqlite:///./test.db"
+os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db")
 os.environ["APP_VERSION"] = "test"
 os.environ["GIT_COMMIT"] = "abcdef1"
 
