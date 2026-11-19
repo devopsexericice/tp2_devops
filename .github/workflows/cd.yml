@@ -1,0 +1,222 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  publish:
+    name: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+      version: ${{ steps.meta.outputs.version }}
+      sha_tag: ${{ steps.meta.outputs.sha_tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute image tags
+        id: meta
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          IMAGE="${REGISTRY}/${IMAGE_NAME}"
+          SHA_TAG="sha-${SHORT_SHA}"
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF_NAME}"
+            TAGS="${IMAGE}:${SHA_TAG},${IMAGE}:${VERSION}"
+          else
+            VERSION="staging-${SHORT_SHA}"
+            TAGS="${IMAGE}:${SHA_TAG}"
+          fi
+          {
+            echo "image=${IMAGE}"
+            echo "version=${VERSION}"
+            echo "sha_tag=${SHA_TAG}"
+            echo "tags=${TAGS}"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  staging:
+    name: staging-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: publish
+    environment:
+      name: staging
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Start staging stack
+        env:
+          IMAGE: ${{ needs.publish.outputs.image }}:${{ needs.publish.outputs.sha_tag }}
+          APP_VERSION: ${{ needs.publish.outputs.version }}
+          GIT_COMMIT: ${{ github.sha }}
+        run: |
+          docker rm -f staging-api staging-db 2>/dev/null || true
+          docker network rm cd-staging 2>/dev/null || true
+          docker network create cd-staging
+          docker run -d --name staging-db --network cd-staging \
+            -e POSTGRES_USER=restaurant \
+            -e POSTGRES_PASSWORD=restaurant \
+            -e POSTGRES_DB=restaurant \
+            postgres:16-alpine
+          for _ in $(seq 1 30); do
+            if docker exec staging-db pg_isready -U restaurant -d restaurant >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          docker exec staging-db pg_isready -U restaurant -d restaurant
+          docker run -d --name staging-api --network cd-staging -p 8000:8000 \
+            -e DATABASE_URL=postgresql+psycopg://restaurant:restaurant@staging-db:5432/restaurant \
+            -e APP_VERSION="$APP_VERSION" \
+            -e GIT_COMMIT="$GIT_COMMIT" \
+            "$IMAGE"
+
+      - name: Smoke test /health
+        env:
+          EXPECTED_VERSION: ${{ needs.publish.outputs.version }}
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 30); do
+            if curl -fsS http://localhost:8000/health -o /tmp/health.json; then
+              cat /tmp/health.json
+              grep -Eq "\"version\"[[:space:]]*:[[:space:]]*\"${EXPECTED_VERSION}\"" /tmp/health.json
+              echo "Staging smoke test OK"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Staging smoke test failed"
+          docker logs staging-api || true
+          exit 1
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f staging-api staging-db || true
+          docker network rm cd-staging || true
+
+  production:
+    name: production
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [publish, staging]
+    environment:
+      name: production
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check deployment secrets
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+          PROD_DIR: ${{ secrets.PROD_DIR }}
+        run: |
+          missing=0
+          for name in PROD_HOST PROD_USER PROD_SSH_KEY PROD_DIR; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Le secret $name n'est pas configuré."
+              missing=1
+            fi
+          done
+          exit $missing
+
+      - name: Configure SSH
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+          PROD_KNOWN_HOSTS: ${{ secrets.PROD_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$PROD_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          if [ -n "${PROD_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "$PROD_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+          else
+            ssh-keyscan -H "$PROD_HOST" >> ~/.ssh/known_hosts
+          fi
+
+      - name: Upload deployment files
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+          PROD_DIR: ${{ secrets.PROD_DIR }}
+        run: |
+          scp deploy/docker-compose.prod.yml scripts/deploy.sh "$PROD_USER@$PROD_HOST:$PROD_DIR/"
+
+      - name: Login to GHCR on server
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" | ssh "$PROD_USER@$PROD_HOST" \
+            "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
+
+      - name: Deploy
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+          PROD_DIR: ${{ secrets.PROD_DIR }}
+          IMAGE: ${{ needs.publish.outputs.image }}:${{ needs.publish.outputs.version }}
+          APP_VERSION: ${{ needs.publish.outputs.version }}
+          GIT_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC2029
+          ssh "$PROD_USER@$PROD_HOST" \
+            "cd '$PROD_DIR' && chmod +x deploy.sh && API_IMAGE='$IMAGE' APP_VERSION='$APP_VERSION' GIT_COMMIT='$GIT_COMMIT' ./deploy.sh"
