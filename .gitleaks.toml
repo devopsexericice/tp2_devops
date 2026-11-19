@@ -1,0 +1,9 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Identifiants locaux factices du TP, aucun secret réel"
+regexes = [
+  '''postgresql\+psycopg://restaurant:restaurant@''',
+  '''POSTGRES_PASSWORD:\s*restaurant''',
+]
