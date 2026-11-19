@@ -6,6 +6,7 @@ umask 077
 : "${APP_VERSION:?APP_VERSION est requis}"
 : "${PROD_DIR:=/opt/restaurant}"
 : "${API_PORT:=}"
+: "${RUN_MIGRATIONS:=true}"
 
 cd "$PROD_DIR"
 
@@ -19,19 +20,28 @@ if [ -z "$API_PORT" ]; then
 fi
 API_PORT="${API_PORT:-8000}"
 
-mkdir -p backups
-
-if [ -n "$(docker compose -f docker-compose.prod.yml ps -q db 2>/dev/null || true)" ]; then
-  backup="backups/db-$(date -u +%Y%m%dT%H%M%SZ).sql"
-  echo "Backup PostgreSQL -> $backup"
-  if ! docker compose -f docker-compose.prod.yml exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > "$backup"; then
-    echo "Erreur: backup PostgreSQL échoué, déploiement annulé." >&2
-    rm -f "$backup"
-    exit 1
-  fi
-fi
-
 export API_IMAGE APP_VERSION API_PORT
+
+echo "Démarrage de PostgreSQL"
+docker compose -f docker-compose.prod.yml up -d db
+
+echo "Attente de PostgreSQL"
+for _ in $(seq 1 60); do
+  if docker compose -f docker-compose.prod.yml exec -T db sh -c 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"' >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+docker compose -f docker-compose.prod.yml exec -T db sh -c 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+
+mkdir -p backups
+backup="backups/db-$(date -u +%Y%m%dT%H%M%SZ).sql"
+echo "Backup PostgreSQL -> $backup"
+if ! docker compose -f docker-compose.prod.yml exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > "$backup"; then
+  echo "Erreur: backup PostgreSQL échoué, déploiement annulé." >&2
+  rm -f "$backup"
+  exit 1
+fi
 
 echo "Pull de $API_IMAGE"
 docker compose -f docker-compose.prod.yml pull api
@@ -41,6 +51,23 @@ if [ -z "${GIT_COMMIT:-}" ]; then
 fi
 GIT_COMMIT="${GIT_COMMIT:-unknown}"
 export GIT_COMMIT
+
+if [ "$RUN_MIGRATIONS" = "true" ]; then
+  if docker compose -f docker-compose.prod.yml run --rm --no-deps api python -c 'import alembic' >/dev/null 2>&1; then
+    has_version="$(docker compose -f docker-compose.prod.yml exec -T db sh -c "psql -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -tAc \"SELECT to_regclass('public.alembic_version')\"")"
+    has_products="$(docker compose -f docker-compose.prod.yml exec -T db sh -c "psql -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -tAc \"SELECT to_regclass('public.products')\"")"
+    if [ -z "$has_version" ] && [ -n "$has_products" ]; then
+      echo "Schéma existant sans Alembic : adoption avec stamp 0001"
+      docker compose -f docker-compose.prod.yml run --rm --no-deps api alembic stamp 0001
+    fi
+    echo "Application des migrations Alembic"
+    docker compose -f docker-compose.prod.yml run --rm --no-deps api alembic upgrade head
+  else
+    echo "Image sans Alembic : migrations ignorées."
+  fi
+else
+  echo "Migrations ignorées (RUN_MIGRATIONS=$RUN_MIGRATIONS)."
+fi
 
 echo "Déploiement de $API_IMAGE (version $APP_VERSION, commit $GIT_COMMIT)"
 docker compose -f docker-compose.prod.yml up -d --remove-orphans

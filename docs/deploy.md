@@ -96,9 +96,10 @@ La restauration écrase les données actuelles : elle doit être validée par un
 
 ## 8. Migrations de base
 
-- La PR Alembic ajoute `alembic upgrade head` dans `deploy.sh` et retire `Base.metadata.create_all`.
-- Tant que cette PR n'est pas mergée, le schéma initial est créé par l'application au démarrage.
-- Après merge, chaque déploiement applique les migrations avant de redémarrer l'API.
+- `app/main.py` ne crée plus les tables : le schéma est géré par Alembic (`alembic.ini` + `migrations/`).
+- `scripts/deploy.sh` démarre PostgreSQL, prend un backup, applique `alembic upgrade head`, puis redémarre l'API.
+- Si la base existe déjà sans table `alembic_version`, le script fait d'abord `alembic stamp 0001` pour adopter le schéma initial, puis `upgrade head`.
+- Le rollback passe `RUN_MIGRATIONS=false` : il ne rejoue pas les migrations et suppose que le schéma reste rétrocompatible. Toute migration doit donc rester compatible avec la version précédente.
 
 ## 9. Dépannage
 

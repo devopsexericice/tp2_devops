@@ -33,7 +33,7 @@ Une tâche / PR est considérée comme **terminée** uniquement si tous ces crit
 1. Le code répond au besoin de l'issue associée.
 2. Les tests automatiques (unitaires et API) sont écrits et passent au vert `[R1, R4]`.
 3. Aucun secret, mot de passe ou fichier `.env` n'est présent dans le code `[R2]`.
-4. Si la base de données est modifiée, le script de mise à jour est inclus et rétrocompatible `[R1]`.
+4. Si la base de données est modifiée, une migration Alembic rétrocompatible est incluse et testée `[R1]`.
 5. La documentation (`README.md` ou docs) est mise à jour `[R4, R5]`.
 6. La PR a été relue, approuvée par **1 développeur interne** et fusionnée dans `main` `[R1, R3, R4]`.
 

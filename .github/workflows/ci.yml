@@ -86,6 +86,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
 
+      - name: Validate migrations
+        run: alembic upgrade head
+
       - name: Run tests
         run: python -m pytest -q
 
