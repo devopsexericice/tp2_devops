@@ -62,19 +62,7 @@ def create_order(payload: OrderIn, db: Session = Depends(get_db)):
     if product is None:
         raise HTTPException(status_code=404, detail="Product not found")
     if product.stock < payload.quantity:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "error": "insufficient_stock",
-                "message": (
-                    f"Stock insuffisant : {payload.quantity} demandés, "
-                    f"{product.stock} disponibles"
-                ),
-                "product_id": payload.product_id,
-                "requested": payload.quantity,
-                "available": product.stock,
-            },
-        )
+        raise HTTPException(status_code=400, detail="Insufficient stock")
 
     product.stock -= payload.quantity
     order = Order(product_id=payload.product_id, quantity=payload.quantity)
