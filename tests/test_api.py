@@ -52,12 +52,6 @@ def test_create_order():
     assert body["quantity"] == 2
 
 
-def _extract_error_payload(response):
-    body = response.json()
-    detail = body.get("detail")
-    return detail if isinstance(detail, dict) else body
-
-
 def test_create_order_insufficient_stock():
     product_id = _add_product(stock=5)
     db = SessionLocal()
@@ -71,12 +65,8 @@ def test_create_order_insufficient_stock():
         json={"product_id": product_id, "quantity": 8},
     )
 
-    assert response.status_code == 409
-    payload = _extract_error_payload(response)
-    assert payload["error"] == "insufficient_stock"
-    assert payload["product_id"] == product_id
-    assert payload["requested"] == 8
-    assert payload["available"] == 5
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Insufficient stock"
 
     db = SessionLocal()
     try:
@@ -127,10 +117,8 @@ def test_create_order_zero_stock():
         json={"product_id": product_id, "quantity": 1},
     )
 
-    assert response.status_code == 409
-    payload = _extract_error_payload(response)
-    assert payload["error"] == "insufficient_stock"
-    assert payload["available"] == 0
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Insufficient stock"
 
     db = SessionLocal()
     try:

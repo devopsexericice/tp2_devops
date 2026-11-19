@@ -1,12 +1,5 @@
 # TP2 — Restaurant API
 
-## Membres:
-
-## Ray Viho AGUE
-## Bethsaïda JEAN VALDEMAR
-## Réné Oke Codjo HOUENANGNON
-## Elvis NDUWIMANA
-
 API minimale Python (FastAPI) + PostgreSQL pour le TP DevOps.
 
 ## Lancer en local
