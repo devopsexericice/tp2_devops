@@ -1,9 +1,11 @@
 # TP2 — Restaurant API
 
-## Ray Viho AGUE
-## Bethsaïda JEAN VALDEMAR
-## Réné Oke Codjo HUENAGNON
-## Elvis NDUWIMANA
+## Membres:
+
+### Ray Viho AGUE
+### Bethsaïda JEAN VALDEMAR
+### Réné Oke Codjo HUENAGNON
+### Elvis NDUWIMANA
 
 ![CI](https://github.com/devopsexericice/tp2_devops/actions/workflows/ci.yml/badge.svg)
 ![CD](https://github.com/devopsexericice/tp2_devops/actions/workflows/cd.yml/badge.svg)
