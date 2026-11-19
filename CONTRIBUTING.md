@@ -48,6 +48,10 @@ Avant tout merge, les checks `secret-scan`, `lint`, `test` et `build` doivent ê
 * **Vérification en 10 secondes :** L'API dispose d'une route publique `GET /health` qui renvoie directement la version active en production :
   ```json
   { "status": "ok", "version": "v1.0.0", "commit": "a1b2c3d" }
+  ```
+* **Publication automatique :** `cd.yml` publie `sha-<sha>` à chaque merge sur `main` et `vX.Y.Z` sur tag. Le staging est vérifié avant la production.
+* **Production :** le job `production` exige l'environnement GitHub `production` (approbation interne) et les secrets `PROD_*` ; voir `docs/deploy.md`.
+* **Rollback :** le workflow manuel `Rollback` redéploie une version `vX.Y.Z` depuis GHCR, sans rebuild.
 
 ---
 
@@ -56,6 +60,7 @@ Avant tout merge, les checks `secret-scan`, `lint`, `test` et `build` doivent ê
 ### Où vivent les secrets ?
 * **En local** : dans un fichier `.env` ignoré par Git (`.gitignore`), créé à partir du modèle `.env.example`.
 * **En CI/CD et Production** : uniquement dans **GitHub Secrets** et **GitHub Environments** (`staging`, `production`).
+* **Secrets de déploiement :** `PROD_HOST`, `PROD_USER`, `PROD_SSH_KEY`, `PROD_DIR`, `PROD_KNOWN_HOSTS` (optionnel). `GITHUB_TOKEN` est fourni par Actions pour GHCR.
 
 ### Qui y a accès ?
 * Uniquement les **3 développeurs internes** (rôle `Admin` / `Maintain`).

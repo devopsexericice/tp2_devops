@@ -2,7 +2,7 @@
 
 Ce document décrit le fonctionnement de notre chaîne de livraison automatisée (GitHub Actions), de la création d'une Pull Request jusqu'à la mise en production. Chaque étape répond aux risques identifiés dans `docs/risques.md` (`[R1]` à `[R5]`) et à notre carte contexte.
 
-> **Statut d'implémentation au 19/11/2026** : la CI de PR est implémentée (`secret-scan`, `lint`, `test` contre PostgreSQL, `build` Docker). Les étapes de CD (publication GHCR, staging, release, rollback) restent à implémenter dans les PR suivantes. Le schéma ci-dessous décrit la cible.
+> **Statut d'implémentation au 19/11/2026** : CI de PR et CD implémentés. `ci.yml` couvre les secrets, le lint, les tests PostgreSQL et le build. `cd.yml` publie l'image GHCR, exécute le staging et le smoke test, puis déploie la production sur tag avec approbation. `rollback.yml` permet le retour à une version antérieure sans rebuild. La production nécessite les secrets `PROD_*` et l'environnement `production` configurés par un admin ; voir `docs/deploy.md`. Les migrations Alembic arrivent dans une PR séparée.
 
 ---
 
@@ -71,3 +71,14 @@ En cas de panne en production (même après la livraison finale lors d'un cas de
   1. **Les suppressions en base de données :** si une table ou une colonne a été supprimée, revenir à l'ancien code ne la recrée pas (il faut restaurer la sauvegarde automatique faite avant le déploiement).
   2. **Les fausses données enregistrées pendant la panne :** les commandes invalides créées pendant l'incident restent en base et doivent être nettoyées à la main.
   3. **Les actions externes :** les e-mails ou notifications déjà envoyés aux clients pendant la panne.
+
+---
+
+## 5. Fichiers d'implémentation
+
+- `.github/workflows/ci.yml` : CI de PR (secrets, lint, tests, build).
+- `.github/workflows/cd.yml` : publication GHCR, staging et release sur tag.
+- `.github/workflows/rollback.yml` : rollback manuel par version.
+- `deploy/docker-compose.prod.yml` : stack de production.
+- `scripts/deploy.sh` : backup, pull, redémarrage et smoke test.
+- `docs/deploy.md` : secrets, environnements et runbook de release/rollback.

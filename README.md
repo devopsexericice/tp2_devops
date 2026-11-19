@@ -1,6 +1,7 @@
 # TP2 — Restaurant API
 
 ![CI](https://github.com/devopsexericice/tp2_devops/actions/workflows/ci.yml/badge.svg)
+![CD](https://github.com/devopsexericice/tp2_devops/actions/workflows/cd.yml/badge.svg)
 
 API minimale Python (FastAPI) + PostgreSQL pour le TP DevOps.
 
@@ -30,7 +31,9 @@ En local, les tests utilisent SQLite par défaut. En CI, ils tournent contre Pos
 ## CI/CD
 
 - CI de PR : `secret-scan` (gitleaks), `lint` (Ruff), `test` (PostgreSQL), `build` Docker.
-- CD (publication GHCR, staging, release, rollback) : à venir dans les PR suivantes. La cible est décrite dans `docs/pipeline.md`.
+- CD : publication GHCR (`sha-...`, `vX.Y.Z`), staging éphémère avec smoke test `/health`, release sur tag et rollback manuel sans rebuild.
+- Production : environnement GitHub `production` avec approbation interne et secrets `PROD_*`. Procédure complète dans `docs/deploy.md`.
+- Migrations : PR Alembic séparée.
 
 ## Secrets
 
